@@ -1,0 +1,5 @@
+{
+  "name": "EmojiMap Polski",
+  "description": "Interaktywna mapa społecznościowa, gdzie użytkownicy mogą dodawać emoji w różnych lokalizacjach. Przygotowana pod integrację z ASP.NET.",
+  "requestFramePermissions": []
+}
