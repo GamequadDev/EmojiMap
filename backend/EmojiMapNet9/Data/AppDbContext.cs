@@ -27,6 +27,12 @@ namespace EmojiMapNet9.Data
                 .HasForeignKey(c => c.MarkerId)
                 .OnDelete(DeleteBehavior.Cascade); // Delete comments if marker is deleted
 
+            modelBuilder.Entity<Comment>()
+                .HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Restrict); // Prevent cycles: User deletion handled manually
+
             // Marker <-> Tag many to many
             modelBuilder.Entity<Marker>()
                 .HasMany(m => m.Tags)
@@ -45,14 +51,14 @@ namespace EmojiMapNet9.Data
                 .HasOne(m => m.User)
                 .WithMany()
                 .HasForeignKey(m => m.UserId)
-                .OnDelete(DeleteBehavior.Restrict); // Deleted user will not delete markers
+                .OnDelete(DeleteBehavior.Cascade); // Deleted user will delete markers
 
             //  User -> Tag One to many
             modelBuilder.Entity<Tag>()
                 .HasOne(t => t.User)
                 .WithMany()
                 .HasForeignKey(t => t.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Restrict); // Prevent cycles: User deletion handled manually
 
 
             //Example Guid
