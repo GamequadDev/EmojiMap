@@ -27,4 +27,13 @@ namespace EmojiMapNet9.Models
         [MinLength(3)]
         public string Password { get; set; } = string.Empty;
     }
+
+    public class UserUpdateDto
+    {
+        [EmailAddress]
+        public string? Email { get; set; }
+
+        [StringLength(50, MinimumLength = 3)]
+        public string? Username { get; set; }
+    }
 }
