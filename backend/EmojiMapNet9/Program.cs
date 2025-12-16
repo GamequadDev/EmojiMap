@@ -13,20 +13,6 @@ using EmojiMapNet9.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
-
-
-
-//Log.Logger = new LoggerConfiguration()
-//   .WriteTo.File("logs/emojimapLog-.txt", rollingInterval: RollingInterval.Day)
-//   .CreateLogger();
-
-
-
-
-
-// Add services to the container.
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
