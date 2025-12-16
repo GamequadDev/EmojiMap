@@ -33,6 +33,14 @@ namespace EmojiMapNet9.Controllers
             return Ok(markers);
         }
 
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "admin")]
+        [HttpGet("all")]
+        public async Task<ActionResult<List<MarkerDto>>> GetAllMarkers()
+        {
+            var markers = await markerService.GetAllMarkersAsync();
+            return Ok(markers);
+        }
+
         [HttpPost("add")]
         public async Task<ActionResult<MarkerDto>> AddMarker(MarkerDto markerRequest)
         {
