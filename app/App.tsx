@@ -54,6 +54,21 @@ function App() {
   const [mapCenter, setMapCenter] = useState<{ lat: number, lng: number } | undefined>(undefined);
   const [mapZoom, setMapZoom] = useState<number | undefined>(undefined);
 
+  // Restore session
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    if (token && userStr) {
+      try {
+        const userData = JSON.parse(userStr);
+        setUser(userData);
+      } catch (e) {
+        console.error("Failed to parse user data", e);
+        localStorage.removeItem('user');
+      }
+    }
+  }, []);
+
   // Load initial data
   const refreshTags = async () => {
     // Fetch Tags from Real API
@@ -96,26 +111,33 @@ function App() {
   useEffect(() => {
     const loadData = async () => {
       if (user) {
-        const [userMarkersRes, publicMarkersRes] = await Promise.all([
-          api.getMarkers(user.id),
-          api.getPublicMarkers()
-        ]);
+        if (user.role === 'admin') {
+          const allMarkersRes = await api.getAllMarkers();
+          if (allMarkersRes.success && allMarkersRes.data) {
+            setMarkers(allMarkersRes.data);
+          }
+        } else {
+          const [userMarkersRes, publicMarkersRes] = await Promise.all([
+            api.getMarkers(user.id),
+            api.getPublicMarkers()
+          ]);
 
-        let combinedMarkers: MapMarker[] = [];
+          let combinedMarkers: MapMarker[] = [];
 
-        if (userMarkersRes.success && userMarkersRes.data) {
-          combinedMarkers = [...userMarkersRes.data];
+          if (userMarkersRes.success && userMarkersRes.data) {
+            combinedMarkers = [...userMarkersRes.data];
+          }
+
+          if (publicMarkersRes.success && publicMarkersRes.data) {
+            const existingIds = new Set(combinedMarkers.map(m => m.id));
+            publicMarkersRes.data.forEach(m => {
+              if (!existingIds.has(m.id)) {
+                combinedMarkers.push(m);
+              }
+            });
+          }
+          setMarkers(combinedMarkers);
         }
-
-        if (publicMarkersRes.success && publicMarkersRes.data) {
-          const existingIds = new Set(combinedMarkers.map(m => m.id));
-          publicMarkersRes.data.forEach(m => {
-            if (!existingIds.has(m.id)) {
-              combinedMarkers.push(m);
-            }
-          });
-        }
-        setMarkers(combinedMarkers);
       } else {
         const markersRes = await api.getPublicMarkers();
         if (markersRes.success && markersRes.data) {
@@ -128,6 +150,24 @@ function App() {
     loadData();
     refreshTags();
   }, [user]);
+
+  // Load Admin Data when tab is active
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const markerId = params.get('marker');
+
+    if (markerId && markers.length > 0) {
+      const targetMarker = markers.find(m => m.id === markerId);
+      if (targetMarker) {
+        setMapCenter({ lat: targetMarker.lat, lng: targetMarker.lng });
+        setMapZoom(16);
+        setActiveTab('map');
+        // Clean URL so refresh doesn't re-trigger or user can navigate cleanly
+        window.history.replaceState({}, '', window.location.pathname);
+        setToastMessage({ text: `Znaleziono punkt: ${targetMarker.title}`, type: 'success' });
+      }
+    }
+  }, [markers]);
 
   // Load Admin Data when tab is active
   useEffect(() => {
@@ -170,6 +210,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
     setUser(null);
     setIsUserMenuOpen(false);
     setActiveTab('map');
@@ -182,15 +223,22 @@ function App() {
     const newName = window.prompt("Wprowadź nową nazwę użytkownika:", user.username);
 
     if (newName && newName.trim() !== "" && newName !== user.username) {
-      const response = await MockApi.updateUser(user.id, newName);
+      const response = await api.updateUser(user.id, { username: newName });
       if (response.success && response.data) {
-        const updatedUser = { ...user, username: newName };
+        // Backend returns the full updated user, or we can construct it if data is partial
+        // Assuming response.data is the full user based on api.ts implementation
+        // But api.ts returns what backend returns. Let's assume it works like register/login.
+        // To be safe, let's merge.
+        const updatedUser = { ...user, ...response.data, username: newName };
+
         setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser)); // Persist change!
+
         setMarkers(prev => prev.map(m => m.userId === user.id ? { ...m, username: newName } : m));
         setToastMessage({ text: "Nazwa użytkownika zmieniona!", type: 'success' });
         setIsUserMenuOpen(false);
       } else {
-        setToastMessage({ text: "Błąd podczas zmiany nazwy.", type: 'error' });
+        setToastMessage({ text: response.error || "Błąd podczas zmiany nazwy.", type: 'error' });
       }
     }
   };
@@ -199,11 +247,10 @@ function App() {
     if (!user) return;
     const confirmed = window.confirm("Czy na pewno chcesz usunąć konto? Ta operacja jest nieodwracalna.");
     if (confirmed) {
-      const response = await MockApi.deleteUser(user.id);
+      const response = await api.deleteUser(user.id);
       if (response.success) {
-        setMarkers(prev => prev.filter(m => m.userId !== user.id));
-        setUser(null);
-        setIsUserMenuOpen(false);
+        setMarkers(prev => prev.filter(m => m.userId !== user.id)); // Not strictly necessary if we logout, but good UX
+        handleLogout(); // This clears token and user from localStorage!
         setToastMessage({ text: "Konto zostało usunięte.", type: 'success' });
       } else {
         setToastMessage({ text: "Nie udało się usunąć konta.", type: 'error' });
@@ -1139,7 +1186,7 @@ function App() {
               <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
                 <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
                   <div className="bg-orange-100 p-2 rounded-lg text-orange-600"><Layers size={20} /></div>
-                  <h2 className="font-bold text-lg text-slate-800">Ostatnie Punkty (Wymuś usunięcie)</h2>
+                  <h2 className="font-bold text-lg text-slate-800">Punkty</h2>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
