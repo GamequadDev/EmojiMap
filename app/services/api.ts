@@ -29,6 +29,9 @@ export const api = {
             if (data.accessToken) {
                 localStorage.setItem('token', data.accessToken);
                 localStorage.setItem('refreshToken', data.refreshToken);
+                if (data.user) {
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                }
             }
 
             // Backend now returns User object in TokenResponseDto
@@ -138,6 +141,24 @@ export const api = {
                 return { success: false, error: 'Failed to delete marker' };
             }
             return { success: true };
+        } catch (error) {
+            return { success: false, error: 'Network error' };
+        }
+    },
+
+    async getAllMarkers(): Promise<{ success: boolean; data?: MapMarker[]; error?: string }> {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/api/Markers/all`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (!response.ok) {
+                return { success: false, error: 'Failed to fetch all markers' };
+            }
+            const data = await response.json();
+            return { success: true, data: data };
         } catch (error) {
             return { success: false, error: 'Network error' };
         }
@@ -326,6 +347,29 @@ export const api = {
 
             if (!response.ok) {
                 return { success: false, error: 'Failed to fetch users' };
+            }
+
+            const data = await response.json();
+            return { success: true, data: data };
+        } catch (error) {
+            return { success: false, error: 'Network error' };
+        }
+    },
+
+    async updateUser(id: string, userData: { username?: string, email?: string }): Promise<{ success: boolean; data?: User; error?: string }> {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/api/Users/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(userData),
+            });
+
+            if (!response.ok) {
+                return { success: false, error: 'Failed to update user' };
             }
 
             const data = await response.json();
