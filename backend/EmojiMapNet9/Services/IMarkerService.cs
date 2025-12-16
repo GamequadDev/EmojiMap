@@ -7,7 +7,7 @@ namespace EmojiMapNet9.Services
     public interface IMarkerService
     {
 
-        //Task<List<MarkerDto>> GetAllMarkerAsync();
+        Task<List<MarkerDto>> GetAllMarkersAsync();
         Task<List<MarkerDto>?> GetMarkersByUserIdAsync(Guid userId);
         Task<List<MarkerDto>> GetPublicMarkersAsync();
         Task<MarkerDto?> UpdateMarkerAsync(MarkerDto markerDto);

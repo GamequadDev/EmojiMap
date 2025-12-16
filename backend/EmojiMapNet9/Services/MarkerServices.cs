@@ -96,6 +96,28 @@ namespace EmojiMapNet9.Services
             }).ToList();
         }
 
+        public async Task<List<MarkerDto>> GetAllMarkersAsync()
+        {
+            var markers = await context.Markers
+                .Include(m => m.Tags)
+                .ToListAsync();
+
+            return markers.Select(marker => new MarkerDto
+            {
+                Id = marker.Id,
+                Latitude = marker.Latitude,
+                Longitude = marker.Longitude,
+                Emoji = marker.Emoji,
+                Title = marker.Title,
+                Description = marker.Description,
+                Tags = marker.Tags.Select(t => t.Title).ToList(),
+                UserId = marker.UserId,
+                Username = marker.Username,
+                Visibility = marker.Visibility,
+                CreatedAt = marker.CreatedAt
+            }).ToList();
+        }
+
         public async Task<List<MarkerDto>> GetPublicMarkersAsync()
         {
             var markers = await context.Markers
@@ -114,7 +136,8 @@ namespace EmojiMapNet9.Services
                 Tags = marker.Tags.Select(t => t.Title).ToList(),
                 UserId = marker.UserId,
                 Username = marker.Username,
-                Visibility = marker.Visibility
+                Visibility = marker.Visibility,
+                CreatedAt = marker.CreatedAt
             }).ToList();
         }
 
